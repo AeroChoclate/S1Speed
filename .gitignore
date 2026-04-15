@@ -416,3 +416,5 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+S1Speed/S1Speed.csproj
+S1Speed/S1Speed.sln
