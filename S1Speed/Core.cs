@@ -1,7 +1,14 @@
-﻿using MelonLoader;
+using MelonLoader;
 using S1Speed.Utils;
 using System;
-using System.Reflection;
+#if MONO
+using ScheduleOne;
+using ScheduleOne.PlayerScripts;
+using UnityEngine;
+#else
+using Il2CppScheduleOne;
+using Il2CppScheduleOne.PlayerScripts;
+#endif
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,9 +20,6 @@ namespace S1Speed
     public class Core : MelonMod
     {
         private bool speedEnabled;
-
-        private Type playerMovementType;
-        private FieldInfo speedField;
 
         private const float SPEED = 5f;
 
@@ -42,14 +46,6 @@ namespace S1Speed
                 toggleKey = parsedKey;
             }
 
-            playerMovementType = Type.GetType("ScheduleOne.PlayerScripts.PlayerMovement, Assembly-CSharp");
-
-            if (playerMovementType != null)
-            {
-                speedField = playerMovementType.GetField("StaticMoveSpeedMultiplier",
-                    BindingFlags.Public | BindingFlags.Static);
-            }
-
             LoggerInstance.Msg($"Initialized. Keybind: {toggleKey}");
         }
 
@@ -63,7 +59,7 @@ namespace S1Speed
 
         private void HandleMenuToggle()
         {
-            if (Input.GetKeyDown(toggleKey) && !waitingForKey)
+            if (UnityEngine.Input.GetKeyDown(toggleKey) && !waitingForKey)
             {
                 menuVisible = !menuVisible;
 
@@ -78,9 +74,7 @@ namespace S1Speed
         {
             try
             {
-                if (speedField == null) return;
-
-                speedField.SetValue(null, speedEnabled ? SPEED : 1f);
+                PlayerMovement.StaticMoveSpeedMultiplier = speedEnabled ? SPEED : 1f;
             }
             catch (Exception ex)
             {
@@ -94,7 +88,7 @@ namespace S1Speed
 
             foreach (KeyCode key in Enum.GetValues(typeof(KeyCode)))
             {
-                if (Input.GetKeyDown(key))
+                if (UnityEngine.Input.GetKeyDown(key))
                 {
                     toggleKey = key;
                     keybindEntry.Value = key.ToString();
@@ -133,20 +127,14 @@ namespace S1Speed
             GameObject speedBtn = CreateButton(panel, new Vector2(0, 40));
             speedText = CreateText(speedBtn, "Speed: OFF");
 
-            speedBtn.GetComponent<Button>().onClick.AddListener(() =>
-            {
-                speedEnabled = !speedEnabled;
-                UpdateButtonText();
-            });
+            var speedBtnComponent = speedBtn.GetComponent<Button>();
+            speedBtnComponent.onClick.AddListener((UnityEngine.Events.UnityAction)(() => { speedEnabled = !speedEnabled; UpdateButtonText(); }));
 
             GameObject keyBtn = CreateButton(panel, new Vector2(0, -40));
             keybindText = CreateText(keyBtn, $"Menu Key: {toggleKey}");
 
-            keyBtn.GetComponent<Button>().onClick.AddListener(() =>
-            {
-                waitingForKey = true;
-                keybindText.text = "Press any key...";
-            });
+            var keyBtnComponent = keyBtn.GetComponent<Button>();
+            keyBtnComponent.onClick.AddListener((UnityEngine.Events.UnityAction)(() => { waitingForKey = true; keybindText.text = "Press any key..."; }));
 
             menuObject.SetActive(false);
         }
@@ -191,6 +179,18 @@ namespace S1Speed
 
             if (keybindText != null)
                 keybindText.text = $"Key: {toggleKey}";
+        }
+
+        private void OnSpeedButtonClicked()
+        {
+            speedEnabled = !speedEnabled;
+            UpdateButtonText();
+        }
+
+        private void OnKeyButtonClicked()
+        {
+            waitingForKey = true;
+            keybindText.text = "Press any key...";
         }
     }
 }
